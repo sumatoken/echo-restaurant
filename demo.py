@@ -1,10 +1,11 @@
 from engine import (
-    generatePrompt,
+    extractHumanResponse,
+    extractOrderFromResponse,
+    placeOrder,
     generateResponse,
     listenToSpeech,
     listenForWakeWord,
     textToSpeech,
-    addToContext,
 )
 from playsound import playsound
 
@@ -14,12 +15,18 @@ def run():
     while recognisedWakeWord:
         playsound("wake.mp3")
         recognisedSpeech = listenToSpeech()
-        if recognisedSpeech == "Sors.":
+        if recognisedSpeech == "Exit.":
             exit()
-        prompt = generatePrompt(recognisedSpeech)
-        response = generateResponse(prompt)
-        addToContext(recognisedSpeech, response)
+        response = generateResponse(recognisedWakeWord)
+        if "-" in response:
+            humanResponse = extractHumanResponse(response)
+            order = extractOrderFromResponse(response)
+            print(order)
+            textToSpeech(humanResponse)
+            placeOrder(order)
         textToSpeech(response)
+        
+        
 
 
 run()

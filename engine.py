@@ -1,12 +1,15 @@
 from prompt_engine.chat_engine import ChatEngine, ChatEngineConfig
 from prompt_engine.model_config import ModelConfig
 from prompt_engine.interaction import Interaction
-import os
 import azure.cognitiveservices.speech as speechsdk
 import openai
+from dotenv import load_dotenv
 import os
-
-openai.organization = "org-xwIudUz9vZhKbTbBroTcMtfP"
+import requests
+import yaml
+import json
+load_dotenv()
+openai.organization = os.environ.get("OPENAI_ORG")
 openai.api_key = os.environ.get("OPENAI_KEY")
 
 speech_config = speechsdk.SpeechConfig(
@@ -19,27 +22,6 @@ audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 speechRecognizer = speechsdk.SpeechRecognizer(
     speech_config=speech_config, audio_config=audio_config
 )
-
-config = ChatEngineConfig(ModelConfig(max_tokens=1024), bot_name="ECHO")
-description = "Vous vous appelez Echo et vous êtes capable de tenir des conversations avec des humains. Vous faites toujours votre réponse en une phrase et demie. Lorsque vous n'avez pas de réponse, répondez uniquement par (je ne sais pas) ou toute autre variante. Lorsque le message n'est pas claire, répondez toujours par (Veuillez répéter) ou toute autre variante."
-examples = [
-    Interaction("Hello", "Hey, how are you?"),
-    Interaction("I am feeling okay, and you?", "I'm in my best shape!"),
-    Interaction(
-        "What is a quantum state?",
-        "In quantum mechanics, a quantum state is a precise mathematical description of a physical system that includes both position and momentum.",
-    ),
-    Interaction(
-        "What is Compton effect?",
-        "The Compton effect, first described by Arthur Holly Compton, is the phenomenon in which an x-ray or gamma ray photon interacts with an electron.",
-    ),
-    Interaction(
-        "How can I generate signals exploiting the properties of operational amplifiers?",
-        "Operational amplifiers (or op amps) can be used to generate various types of signals",
-    ),
-]
-global chat_engine
-chat_engine = ChatEngine(config=config, description=description, examples=examples)
 
 
 def listenForWakeWord():
@@ -90,25 +72,12 @@ def textToSpeech(text):
         cancellation_details = speech_synthesis_result.cancellation_details
         print("Speech synthesis canceled: {}".format(cancellation_details.reason))
 
-
-def generatePrompt(query):
-    return chat_engine.build_prompt(query)
-
-
-def addToContext(query, response):
-    chat_engine.add_interaction(query, response)
-
-
-def generateResponse(prompt):
-    response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=60,
-        temperature=0.7,
-    )
-    return response.choices[0].text.split("ECHO: ")[1]
-
-
+def extractOrderFromResponse(response):
+    order = response.split("-")[1].rstrip().rstrip()
+    return order
+def extractHumanResponse(response):
+    humanResponse = response.split("-")[0][1:]
+    return humanResponse
 def listenToSpeech():
     print("Listening")
     recognisedSpeech = speechRecognizer.recognize_once_async().get()
@@ -125,3 +94,44 @@ def listenToSpeech():
         cancellation_details = recognisedSpeech.cancellation_details
         print("Speech Recognition canceled: {}".format(cancellation_details))
         return "Error"
+
+def orderToJSON(order):
+    order = json.loads(order)
+    return order
+
+def getMenu():
+    url = "http://localhost:3000/api/robot"
+    body = {"intent": "getMenu"}
+    response = requests.get(url, body)
+    response = response.json()
+    return response
+
+def placeOrder(order):
+    url = "http://localhost:3000/api/robot"
+    body = order
+    response = requests.get(url, body)
+    response = response.json()
+    return response
+    
+def JSONToYAML(json):
+    return yaml.dump(json)
+
+systemContext = JSONToYAML(getMenu())
+
+def generateResponse(prompt, context=systemContext):
+    response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": '''
+         Your name is Echo. I want you to be a restaurant waiter. You are provided by menu and all the information necessary to do the duties of a waiter. Your job will be to talk to clients and take orders from them. You are responsible for table 1.
+
+
+Once the order is placed you must only reply using this template: A message to be delivered to the client and a JSON object that has the table number and the order. Here's an example of such a response:
+"Your order of Omlette has been placed and will be prepared shortly. Is there anything else I can get for you in the meantime, such as a drink or side dish? - {"intent": "placeOrder", "table": tableNumber, "order": orderName}"
+
+The restaurant's menu:
+{} ''' + context},
+        {"role": "user", "content": prompt}
+    ]
+)
+    return response.choices[0].message.content
