@@ -16,7 +16,7 @@ speech_config = speechsdk.SpeechConfig(
     subscription=os.environ.get("AZURE_SPEECH_KEY"),
     region=os.environ.get("AZURE_SPEECH_REGION"),
 )
-speech_config.speech_recognition_language = "en-US"
+speech_config.speech_recognition_language = "fr-FR"
 audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
 audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 speechRecognizer = speechsdk.SpeechRecognizer(
@@ -73,10 +73,10 @@ def textToSpeech(text):
         print("Speech synthesis canceled: {}".format(cancellation_details.reason))
 
 def extractOrderFromResponse(response):
-    order = response.split("-")[1].rstrip().rstrip()
+    order = response.split("<==>")[1].rstrip().rstrip().rstrip()
     return order
 def extractHumanResponse(response):
-    humanResponse = response.split("-")[0][1:]
+    humanResponse = response.split("<==>")[0][1:]
     return humanResponse
 def listenToSpeech():
     print("Listening")
@@ -128,7 +128,7 @@ def generateResponse(prompt, context=systemContext):
 
 
 Once the order is placed you must only reply using this template: A message to be delivered to the client and a JSON object that has the table number and the order. Here's an example of such a response:
-"Your order of Omlette has been placed and will be prepared shortly. Is there anything else I can get for you in the meantime, such as a drink or side dish? - {"intent": "placeOrder", "table": tableNumber, "plate": plateName}"
+"Your order of Omlette has been placed and will be prepared shortly. Is there anything else I can get for you in the meantime, such as a drink or side dish? <==> {"intent": "placeOrder", "table": tableNumber, "plate": plateName}
 
 The restaurant's menu:
 {} ''' + context},
