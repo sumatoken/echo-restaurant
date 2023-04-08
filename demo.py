@@ -17,14 +17,16 @@ def run():
         recognisedSpeech = listenToSpeech()
         if recognisedSpeech == "Exit.":
             exit()
-        response = generateResponse(recognisedWakeWord)
+        response = generateResponse(recognisedSpeech)
+        print(recognisedSpeech)
+        textToSpeech(response)
         if "-" in response:
             humanResponse = extractHumanResponse(response)
             order = extractOrderFromResponse(response)
-            print(order)
-            textToSpeech(humanResponse)
+            print('order: ', order)
             placeOrder(order)
-        textToSpeech(response)
+            textToSpeech(humanResponse)
+            print(response)
         
         
 

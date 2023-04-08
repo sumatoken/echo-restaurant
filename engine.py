@@ -16,7 +16,7 @@ speech_config = speechsdk.SpeechConfig(
     subscription=os.environ.get("AZURE_SPEECH_KEY"),
     region=os.environ.get("AZURE_SPEECH_REGION"),
 )
-speech_config.speech_recognition_language = "fr-FR"
+speech_config.speech_recognition_language = "en-US"
 audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
 audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 speechRecognizer = speechsdk.SpeechRecognizer(
@@ -108,9 +108,10 @@ def getMenu():
 
 def placeOrder(order):
     url = "http://localhost:3000/api/robot"
-    body = order
-    response = requests.get(url, body)
+    body = {"intent": "placeOrder", "order": order}
+    response = requests.post(url, body)
     response = response.json()
+    print(response)
     return response
     
 def JSONToYAML(json):
@@ -123,11 +124,11 @@ def generateResponse(prompt, context=systemContext):
     model="gpt-3.5-turbo",
     messages=[
         {"role": "system", "content": '''
-         Your name is Echo. I want you to be a restaurant waiter. You are provided by menu and all the information necessary to do the duties of a waiter. Your job will be to talk to clients and take orders from them. You are responsible for table 1.
+         Your name is Echo. I want you to be a restaurant waiter. You are provided by menu and all the information necessary to do the duties of a waiter. Your job will be to talk to clients and take orders from them. You are responsible for table 2.
 
 
 Once the order is placed you must only reply using this template: A message to be delivered to the client and a JSON object that has the table number and the order. Here's an example of such a response:
-"Your order of Omlette has been placed and will be prepared shortly. Is there anything else I can get for you in the meantime, such as a drink or side dish? - {"intent": "placeOrder", "table": tableNumber, "order": orderName}"
+"Your order of Omlette has been placed and will be prepared shortly. Is there anything else I can get for you in the meantime, such as a drink or side dish? - {"intent": "placeOrder", "table": tableNumber, "plate": plateName}"
 
 The restaurant's menu:
 {} ''' + context},
