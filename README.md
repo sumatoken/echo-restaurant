@@ -13,4 +13,6 @@ Powered by Azure cognitive services and OpenAI.
 
 - Getting the menu of the restaurants.
 
+- Placing orders.
+
 - Playing the response on the speaker.
