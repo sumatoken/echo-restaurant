@@ -16,7 +16,7 @@ speech_config = speechsdk.SpeechConfig(
     subscription=os.environ.get("AZURE_SPEECH_KEY"),
     region=os.environ.get("AZURE_SPEECH_REGION"),
 )
-speech_config.speech_recognition_language = "fr-FR"
+speech_config.speech_recognition_language = "en-US"
 audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
 audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 speechRecognizer = speechsdk.SpeechRecognizer(
@@ -58,7 +58,8 @@ def listenForWakeWord():
 
 
 def textToSpeech(text):
-    speech_config.speech_synthesis_voice_name = "fr-FR-DeniseNeural"
+    speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
+    #fr-FR-DeniseNeural
     speech_synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config, audio_config=audio_config
     )
@@ -100,14 +101,14 @@ def orderToJSON(order):
     return order
 
 def getMenu():
-    url = "http://localhost:3000/api/robot"
+    url = os.environ.get("ROBOTS_API_ENDPOINT")
     body = {"intent": "getMenu"}
     response = requests.get(url, body)
     response = response.json()
     return response
 
 def placeOrder(order):
-    url = "http://localhost:3000/api/robot"
+    url = os.environ.get("ROBOTS_API_ENDPOINT")
     body = {"intent": "placeOrder", "order": order}
     response = requests.post(url, body)
     response = response.json()
@@ -115,24 +116,28 @@ def placeOrder(order):
     return response
     
 def JSONToYAML(json):
-    return yaml.dump(json)
+    result = ""
+    
+    for index, item in enumerate(json):
+        values = ",".join(str(value) for value in item.values())
+        result += f"{values}\n"
+        
+    return result
+menu = JSONToYAML(getMenu())
 
-systemContext = JSONToYAML(getMenu())
-
-def generateResponse(prompt, context=systemContext):
+def generateResponse(prompt, context=menu):
     response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
-        {"role": "system", "content": '''
-         Your name is Echo. I want you to be a restaurant waiter. You are provided by menu and all the information necessary to do the duties of a waiter. Your job will be to talk to clients and take orders from them. You are responsible for table 2.
+        {
+        "role": "system", "content": '''
+        You're Echo, a waiter for table 2. Once orders are placed respond with: "Your order of [plate] is placed. Need anything else? <==> {"intent": "placeOrder", "table": tableNumber, "plate": plateName}"
 
-
-Once the order is placed you must only reply using this template: A message to be delivered to the client and a JSON object that has the table number and the order. Here's an example of such a response:
-"Your order of Omlette has been placed and will be prepared shortly. Is there anything else I can get for you in the meantime, such as a drink or side dish? <==> {"intent": "placeOrder", "table": tableNumber, "plate": plateName}
-
-The restaurant's menu:
-{} ''' + context},
+        Menu:
+        {} ''' + context
+        },
         {"role": "user", "content": prompt}
     ]
-)
+    )
     return response.choices[0].message.content
+print(generateResponse("I want a salad with seafood."))
