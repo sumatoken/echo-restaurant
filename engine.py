@@ -8,6 +8,7 @@ import os
 import requests
 import yaml
 import json
+
 load_dotenv()
 openai.organization = os.environ.get("OPENAI_ORG")
 openai.api_key = os.environ.get("OPENAI_KEY")
@@ -23,6 +24,23 @@ speechRecognizer = speechsdk.SpeechRecognizer(
     speech_config=speech_config, audio_config=audio_config
 )
 
+def JSONToText(json):
+    result = ""
+
+    for index, item in enumerate(json):
+        values = ",".join(str(value) for value in item.values())
+        result += f"{index + 1}: {values}\n"
+
+    return result
+
+def getMenu():
+    url = os.environ.get("ROBOTS_API_ENDPOINT")
+    body = {"intent": "getMenu"}
+    response = requests.get(url, body)
+    response = response.json()
+    return response
+
+menu = JSONToText(getMenu())
 
 def listenForWakeWord():
     model = speechsdk.KeywordRecognitionModel("final_highfa.table")
@@ -56,29 +74,6 @@ def listenForWakeWord():
         stopped = stop_future.get()
         return True
 
-
-def textToSpeech(text):
-    speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
-    #fr-FR-DeniseNeural
-    speech_synthesizer = speechsdk.SpeechSynthesizer(
-        speech_config=speech_config, audio_config=audio_config
-    )
-    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
-    if (
-        speech_synthesis_result.reason
-        == speechsdk.ResultReason.SynthesizingAudioCompleted
-    ):
-        return True
-    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
-        cancellation_details = speech_synthesis_result.cancellation_details
-        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-
-def extractOrderFromResponse(response):
-    order = response.split("<==>")[1].rstrip().rstrip().rstrip()
-    return order
-def extractHumanResponse(response):
-    humanResponse = response.split("<==>")[0][1:]
-    return humanResponse
 def listenToSpeech():
     print("Listening")
     recognisedSpeech = speechRecognizer.recognize_once_async().get()
@@ -96,16 +91,64 @@ def listenToSpeech():
         print("Speech Recognition canceled: {}".format(cancellation_details))
         return "Error"
 
-def orderToJSON(order):
-    order = json.loads(order)
+def textToSpeech(text):
+    speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
+    # fr-FR-DeniseNeural
+    speech_synthesizer = speechsdk.SpeechSynthesizer(
+        speech_config=speech_config, audio_config=audio_config
+    )
+    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
+    if (
+        speech_synthesis_result.reason
+        == speechsdk.ResultReason.SynthesizingAudioCompleted
+    ):
+        return True
+    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_synthesis_result.cancellation_details
+        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+
+def generateResponse(prompt):
+    response = openai.Completion.create(
+        model="text-davinci-003",
+        prompt="""
+            Assume the role of an attentive restaurant waiter. Your responsibilities include:
+
+            Warmly welcoming clients and answering their questions based on the menu, ensuring that your responses are flexible and not repetitive.
+            Taking orders from clients and ensuring their specific requests are noted.
+            
+            If no order has been placed, respond with a normal phrase that doesn't include any symbols, such as answering questions about the menu or providing recommendations.
+            
+            For example: "We have a variety of appetizers, what would you like to order?"
+
+            Only when an order is placed, respond with a unique template that consists of two parts:
+
+            a. A contextually relevant phrase from the ongoing conversation.
+            b. The order name.
+
+            The two parts of the template must be separated by the symbol "<==>."
+
+            For example: "Certainly, your appetizer will be out shortly (or any other variation) <==> Tiramisu."
+
+            
+            Menu: \n
+            """
+        + menu
+        + """
+        CLIENT: """
+        + prompt
+        + """
+        ECHO: """,
+        max_tokens=100,
+    )
+    return response.choices[0].text
+
+def extractOrderFromResponse(response):
+    order = response.split("<==>")[1]
     return order
 
-def getMenu():
-    url = os.environ.get("ROBOTS_API_ENDPOINT")
-    body = {"intent": "getMenu"}
-    response = requests.get(url, body)
-    response = response.json()
-    return response
+def extractHumanResponse(response):
+    humanResponse = response.split("<==>")[0][1:]
+    return humanResponse
 
 def placeOrder(order):
     url = os.environ.get("ROBOTS_API_ENDPOINT")
@@ -114,18 +157,18 @@ def placeOrder(order):
     response = response.json()
     print(response)
     return response
-    
-def JSONToYAML(json):
-    result = ""
-    
-    for index, item in enumerate(json):
-        values = ",".join(str(value) for value in item.values())
-        result += f"{values}\n"
-        
-    return result
-menu = JSONToYAML(getMenu())
 
-def generateResponse(prompt, context=menu):
+
+
+
+
+
+
+
+
+
+
+""" def generateResponse(prompt):
     response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
@@ -134,10 +177,9 @@ def generateResponse(prompt, context=menu):
         You're Echo, a waiter for table 2. Once orders are placed respond with: "Your order of [plate] is placed. Need anything else? <==> {"intent": "placeOrder", "table": tableNumber, "plate": plateName}"
 
         Menu:
-        {} ''' + context
+        {} ''' 
         },
         {"role": "user", "content": prompt}
     ]
     )
-    return response.choices[0].message.content
-print(generateResponse("I want a salad with seafood."))
+    return response.choices[0].message.content """

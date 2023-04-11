@@ -17,18 +17,17 @@ def run():
         recognisedSpeech = listenToSpeech()
         if recognisedSpeech == "Exit.":
             exit()
-        print('recognised', recognisedSpeech)
+        print("recognised:", recognisedSpeech)
         response = generateResponse(recognisedSpeech)
-        print('response: ', response)
+        print("response: ", response)
         if "<==>" in response:
             humanResponse = extractHumanResponse(response)
             order = extractOrderFromResponse(response)
-            print('order: ', order)
+            print("order: ", order)
             placeOrder(order)
             textToSpeech(humanResponse)
         else:
             textToSpeech(response)
-        
 
 
 run()
