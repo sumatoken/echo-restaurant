@@ -15,7 +15,7 @@ def run():
     while recognisedWakeWord:
         playsound("wake.mp3")
         recognisedSpeech = listenToSpeech()
-        if recognisedSpeech == "Exit.":
+        if recognisedSpeech == "Sors.":
             exit()
         print("recognised:", recognisedSpeech)
         response = generateResponse(recognisedSpeech)

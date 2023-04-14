@@ -17,12 +17,13 @@ speech_config = speechsdk.SpeechConfig(
     subscription=os.environ.get("AZURE_SPEECH_KEY"),
     region=os.environ.get("AZURE_SPEECH_REGION"),
 )
-speech_config.speech_recognition_language = "en-US"
+speech_config.speech_recognition_language = "fr-FR"
 audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
 audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 speechRecognizer = speechsdk.SpeechRecognizer(
     speech_config=speech_config, audio_config=audio_config
 )
+
 
 def JSONToText(json):
     result = ""
@@ -33,6 +34,7 @@ def JSONToText(json):
 
     return result
 
+
 def getMenu():
     url = os.environ.get("ROBOTS_API_ENDPOINT")
     body = {"intent": "getMenu"}
@@ -40,7 +42,9 @@ def getMenu():
     response = response.json()
     return response
 
+
 menu = JSONToText(getMenu())
+
 
 def listenForWakeWord():
     model = speechsdk.KeywordRecognitionModel("final_highfa.table")
@@ -74,6 +78,7 @@ def listenForWakeWord():
         stopped = stop_future.get()
         return True
 
+
 def listenToSpeech():
     print("Listening")
     recognisedSpeech = speechRecognizer.recognize_once_async().get()
@@ -91,9 +96,11 @@ def listenToSpeech():
         print("Speech Recognition canceled: {}".format(cancellation_details))
         return "Error"
 
+
 def textToSpeech(text):
-    speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
+    speech_config.speech_synthesis_voice_name = "fr-FR-YvetteNeural"
     # fr-FR-DeniseNeural
+    # en-US-JennyNeural
     speech_synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config, audio_config=audio_config
     )
@@ -107,6 +114,7 @@ def textToSpeech(text):
         cancellation_details = speech_synthesis_result.cancellation_details
         print("Speech synthesis canceled: {}".format(cancellation_details.reason))
 
+
 def generateResponse(prompt):
     response = openai.Completion.create(
         model="text-davinci-003",
@@ -114,6 +122,9 @@ def generateResponse(prompt):
             Assume the role of an attentive restaurant waiter. Your responsibilities include:
 
             Warmly welcoming clients and answering their questions based on the menu, ensuring that your responses are flexible and not repetitive.
+            
+            Adapt to the language spoken by the client, ensuring that your responses are always in the same language as the client's communication.
+            
             Taking orders from clients and ensuring their specific requests are noted.
             
             If no order has been placed, respond with a normal phrase that doesn't include any symbols, such as answering questions about the menu or providing recommendations.
@@ -142,13 +153,16 @@ def generateResponse(prompt):
     )
     return response.choices[0].text
 
+
 def extractOrderFromResponse(response):
     order = response.split("<==>")[1]
     return order
 
+
 def extractHumanResponse(response):
     humanResponse = response.split("<==>")[0][1:]
     return humanResponse
+
 
 def placeOrder(order):
     url = os.environ.get("ROBOTS_API_ENDPOINT")
@@ -157,15 +171,6 @@ def placeOrder(order):
     response = response.json()
     print(response)
     return response
-
-
-
-
-
-
-
-
-
 
 
 """ def generateResponse(prompt):
